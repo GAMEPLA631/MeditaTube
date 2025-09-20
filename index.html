@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MediaTube</title>
+  <!-- Web ikona (inline SVG favicon) -->
+  <link rel="icon" href="data:image/svg+xml,
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+      <rect width='100' height='100' fill='black'/>
+      <text x='50' y='65' font-size='55' text-anchor='middle' fill='red' font-family='Arial'>MT</text>
+    </svg>">
+  <style>
+    :root{
+      --yt-red:#ff0000;
+      --yt-dark:#181818;
+      --yt-bg:#0f0f0f;
+      --yt-text:#fff;
+      --accent-2:#3ea6ff; /* modrá progress čiara */
+    }
+    body{margin:0;background:var(--yt-bg);color:var(--yt-text);font:14px/1.4 Arial,Helvetica,sans-serif}
+    header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--yt-dark);border-bottom:1px solid #333}
+    .logo{display:flex;align-items:center;gap:6px;font-weight:700;font-size:18px;color:var(--yt-text)}
+    .logo span{color:var(--yt-red)}
+    .search{flex:1;max-width:500px;margin:0 20px;display:flex}
+    .search input{flex:1;padding:6px 10px;border:1px solid #333;border-radius:2px 0 0 2px;background:#000;color:#fff}
+    .search button{background:#333;border:none;color:#fff;padding:0 12px;border-radius:0 2px 2px 0;cursor:pointer}
+    .btn{background:var(--yt-red);border:none;color:#fff;padding:6px 12px;border-radius:2px;cursor:pointer}
+    main{display:grid;grid-template-columns:2fr 1fr;gap:16px;padding:16px}
+    .player{position:relative;background:#000;aspect-ratio:16/9;border-radius:8px;overflow:hidden}
+    video{width:100%;height:100%;background:#000}
+    .controls{position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.7));display:flex;align-items:center;gap:10px}
+    .icon-btn{background:rgba(255,255,255,.15);border:none;border-radius:4px;padding:6px;cursor:pointer;color:#fff}
+    .progress{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:999px;cursor:pointer;background:linear-gradient(to right,var(--accent-2) 0%,var(--accent-2) 0%,rgba(255,255,255,.25) 0%)}
+    .progress::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(62,166,255,.35);margin-top:-4px}
+    .progress::-moz-range-progress{background:var(--accent-2);height:6px;border-radius:999px}
+    .progress::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:none}
+    #volume{width:80px}
+    .sidebar{background:var(--yt-dark);padding:12px;border-radius:8px;overflow:auto}
+    .card{background:#202020;margin-bottom:12px;border-radius:6px;overflow:hidden;cursor:pointer}
+    .card img{width:100%;display:block}
+    .card-title{padding:6px;font-size:13px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo"><span>▶</span> MediaTube</div>
+  <div class="search">
+    <input type="text" placeholder="Hľadať">
+    <button>🔍</button>
+  </div>
+  <button id="uploadBtn" class="btn">Nahráť</button>
+  <input id="fileInput" type="file" accept="video/*" hidden>
+</header>
+
+<main>
+  <section>
+    <div class="player" id="player">
+      <video id="video"></video>
+      <div class="controls">
+        <button id="playBtn" class="icon-btn">▶️</button>
+        <input id="progress" class="progress" type="range" min="0" max="1000" value="0">
+        <input id="volume" type="range" min="0" max="1" step="0.01" value="1">
+        <button id="fsBtn" class="icon-btn">⛶</button>
+      </div>
+    </div>
+  </section>
+  <aside class="sidebar" id="grid">
+    <div class="card"><img src="https://via.placeholder.com/320x180?text=Video"><div class="card-title">Ukážkové video</div></div>
+  </aside>
+</main>
+
+<script>
+const fileInput=document.getElementById('fileInput');
+const uploadBtn=document.getElementById('uploadBtn');
+const video=document.getElementById('video');
+const progress=document.getElementById('progress');
+const playBtn=document.getElementById('playBtn');
+const vol=document.getElementById('volume');
+const fsBtn=document.getElementById('fsBtn');
+const player=document.getElementById('player');
+let objectUrl=null;
+
+uploadBtn.addEventListener('click',()=>fileInput.click());
+fileInput.addEventListener('change',e=>{
+  const file=e.target.files[0];
+  if(!file)return;
+  if(objectUrl)URL.revokeObjectURL(objectUrl);
+  objectUrl=URL.createObjectURL(file);
+  video.src=objectUrl;
+  video.play();
+  playBtn.textContent="⏸️";
+});
+
+function setProgressBG(ratio){
+  const pct=Math.max(0,Math.min(100,Math.round(ratio*100)));
+  const base='rgba(255,255,255,.25)';
+  const fill='#3ea6ff';
+  progress.style.background=`linear-gradient(to right, ${fill} 0%, ${fill} ${pct}%, ${base} ${pct}%, ${base} 100%)`;
+}
+video.addEventListener('timeupdate',()=>{
+  const ratio=(video.currentTime||0)/(video.duration||1);
+  progress.value=Math.floor(ratio*1000);
+  setProgressBG(ratio);
+});
+progress.addEventListener('input',()=>setProgressBG(progress.value/1000));
+progress.addEventListener('change',()=>{
+  const ratio=progress.value/1000;
+  video.currentTime=ratio*(video.duration||0);
+});
+video.addEventListener('loadedmetadata',()=>setProgressBG(0));
+
+playBtn.addEventListener('click',()=>{
+  if(video.paused){video.play();playBtn.textContent="⏸️";}
+  else{video.pause();playBtn.textContent="▶️";}
+});
+video.addEventListener('play',()=>playBtn.textContent="⏸️");
+video.addEventListener('pause',()=>playBtn.textContent="▶️");
+
+vol.addEventListener('input',()=>video.volume=parseFloat(vol.value));
+
+fsBtn.addEventListener('click',()=>{
+  if(!document.fullscreenElement){player.requestFullscreen?.();}
+  else{document.exitFullscreen?.();}
+});
+</script>
+</body>
+</html>
